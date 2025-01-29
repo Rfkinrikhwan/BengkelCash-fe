@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
 import axios from 'axios';
+import { axiosConfig } from '~/config/axios';
 
 // Define types
 interface User {
@@ -40,7 +41,7 @@ const useAuthStore = create<AuthState>()(
                 try {
                     set({ isLoading: true, error: null });
 
-                    const response = await axios.post('/api/auth/login', {
+                    const response = await axiosConfig.post('/api/login', {
                         email,
                         password,
                     });
@@ -91,7 +92,7 @@ const useAuthStore = create<AuthState>()(
                         throw new Error('No refresh token available');
                     }
 
-                    const response = await axios.post('/api/auth/refresh', {
+                    const response = await axiosConfig.post('/api/refresh', {
                         refreshToken,
                     });
 
@@ -128,18 +129,43 @@ const useAuthStore = create<AuthState>()(
     )
 );
 
-// Axios interceptor untuk handle 401 errors
-axios.interceptors.response.use(
+// Axios request interceptor
+axiosConfig.interceptors.request.use(
+    (config) => {
+        const accessToken = useAuthStore.getState().accessToken;
+
+        // Jika ada access token, tambahkan ke header
+        if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+
+        // Tambahkan header default lainnya jika diperlukan
+        config.headers['Content-Type'] = 'application/json';
+
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Axios response interceptor untuk handle 401 errors
+axiosConfig.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
+        const originalRequest = error.config;
+
+        // Cek jika error adalah 401 dan request belum di-retry
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;  // Tandai bahwa request sedang di-retry
+
             try {
                 await useAuthStore.getState().refreshAccessToken();
-                // Retry original request
-                const originalRequest = error.config;
-                originalRequest.headers['Authorization'] = `Bearer ${useAuthStore.getState().accessToken}`;
+                // Update token di header dan retry request
+                originalRequest.headers.Authorization = `Bearer ${useAuthStore.getState().accessToken}`;
                 return axios(originalRequest);
             } catch (refreshError) {
+                // Jika refresh token gagal, user akan di-logout di refreshAccessToken
                 return Promise.reject(refreshError);
             }
         }
