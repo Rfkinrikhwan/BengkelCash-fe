@@ -1,17 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import { motion } from 'framer-motion';
 import Navbar from "./Navbar";
 import Footer from "./Footer";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
+import Cookies from "js-cookie";
 
 export default function AdminLayout() {
+    const navigate = useNavigate();
     const [isExpanded, setIsExpanded] = useState(false);
 
     const toggleSidebar = () => setIsExpanded(!isExpanded);
 
+    useEffect(() => {
+        const accessToken = Cookies.get('accessToken');
+
+        if (accessToken === undefined || !accessToken) {
+            navigate('/signin');
+            return;
+        }
+    }, [navigate]);
+
     return (
-        <div className="bg-gray-100 flex px-3 py-5 gap-5 min-h-screen">
+        <div className="bg-gray-100 flex px-3 py-5 gap-3 min-h-screen">
             {/* Sidebar */}
             <Sidebar isExpanded={isExpanded} toggleSidebar={toggleSidebar} />
 
@@ -25,9 +36,7 @@ export default function AdminLayout() {
 
                 {/* Content Area */}
                 <main className="flex-1">
-                    <div className="bg-white rounded-lg shadow-sm p-6 h-full">
-                        <Outlet />
-                    </div>
+                    <Outlet />
                 </main>
 
                 {/* <Footer /> */}

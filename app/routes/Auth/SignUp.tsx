@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import Cookies from 'js-cookie';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import useAuthStore from '~/store/authStore';
 
 export default function SignIn() {
-
+    const navigate = useNavigate();
     const login = useAuthStore((state) => state.login);
     const isLoading = useAuthStore((state) => state.isLoading);
     const error = useAuthStore((state) => state.error);
@@ -19,6 +21,14 @@ export default function SignIn() {
             [name]: value
         }));
     };
+
+    // Cek token saat komponen dimuat
+    useEffect(() => {
+        const accessToken = Cookies.get('accessToken');
+        if (accessToken) {
+            navigate('/'); // atau route yang sesuai untuk user yang sudah login
+        }
+    }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
