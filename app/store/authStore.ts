@@ -70,6 +70,9 @@ const useAuthStore = create<AuthState>((set, get) => ({
         Cookies.remove('accessToken');
         Cookies.remove('refreshToken');
 
+        // Redirect to sign-in route
+        window.location.href = '/signin';
+
         // Reset state
         set({
             user: null,
